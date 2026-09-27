@@ -1,45 +1,52 @@
 ---
 # yaml-language-server: $schema=https://schema.blue-build.org/recipe-v1.json
-# image will be published to ghcr.io/<user>/<name>
-name: template
-# description will be included in the image's metadata
-description: This is my personal OS image.
+name: custom-bazzite
+description: Custom Bazzite desktop image with Waydroid and personal config.
 
-# the base image to build on top of (FROM) and the version tag to use
-base-image: ghcr.io/ublue-os/silverblue-main
-image-version: latest # You can pin to a specific version of Fedora as well
+base-image: ghcr.io/ublue-os/bazzite
+image-version: latest
 
-# module configuration, executed in order
-# you can include multiple instances of the same module
 modules:
+  # Drop config files into the image.
+  # Place files under files/system/ mirroring the root filesystem.
+  # e.g. files/system/etc/sysctl.d/99-custom.conf → /etc/sysctl.d/99-custom.conf
   - type: files
     files:
       - source: system
-        destination: / # copies files/system/* (* means everything inside it) into your image's root folder /
+        destination: /
 
+  # Extra RPM packages via dnf/rpm-ostree
   - type: dnf
-    repos:
-      copr:
-        - atim/starship
     install:
       packages:
-        - micro
-        - starship
-    remove:
-      packages:
-        # example: removing firefox (in favor of the flatpak)
-        # "firefox" is the main package, "firefox-langpacks" is a dependency
-        - firefox
-        - firefox-langpacks # also remove firefox dependency (not required for all packages, this is a special case)
+        - waydroid
+        # Add more packages here, e.g.:
+        # - distrobox
+        # - input-remapper
+        # - v4l2loopback
 
+  # Systemd units — enable waydroid services
+  - type: systemd
+    system:
+      enabled:
+        - waydroid-container.service
+        - waydroid-init.service  # first-boot init (defined in files/system)
+
+  # Default Flatpaks installed at first boot
   - type: default-flatpaks
     configurations:
-      - notify: true # Send notification after install/uninstall is finished (true/false)
+      - notify: true
         scope: system
-        # If no repo information is specified, Flathub will be used by default
-        install: # system flatpaks we want all users to have and not remove
-          - org.mozilla.firefox
-          - org.gnome.Loupe
-      - scope: user # Also add Flathub user repo, but no user packages
+        # repo-url and repo-name default to Flathub if omitted
+        install:
+          # Add your Flatpaks here, e.g.:
+          # - com.obsproject.Studio
+          # - org.videolan.VLC
+          # - net.davidotek.pupgui2
+          # - com.github.tchx84.Flatseal
+        remove:
+          # Remove unwanted pre-installed Flatpaks here, e.g.:
+          # - org.gnome.Maps
+      - scope: user  # adds Flathub user repo
 
-  - type: signing # this sets up the proper policy & signing files for signed images to work fully
+  - type: signing

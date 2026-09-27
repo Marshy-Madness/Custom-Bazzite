@@ -1,0 +1,15 @@
+[Unit]
+Description=Initialize Waydroid Android container on first boot
+ConditionPathExists=!/var/lib/waydroid/.initialized
+After=network-online.target waydroid-container.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# Use -s VANILLA for AOSP only, -s GAPPS for Google Play support
+ExecStart=/usr/bin/waydroid init -s VANILLA
+ExecStartPost=/usr/bin/touch /var/lib/waydroid/.initialized
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
